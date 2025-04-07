@@ -60,55 +60,61 @@ class InfluencerFinder:
             print(f"Error al obtener ID de ubicación: {str(e)}")
             return ''
 
-<<<<<<< HEAD
     @lru_cache(maxsize=100)
     def _get_hashtag_id(self, hashtag: str) -> str:
         """Obtiene el ID de un hashtag"""
-=======
-    def _analyze_profile(self, username: str) -> Dict:
-        """Analiza un perfil de Instagram de forma detallada"""
->>>>>>> 18f8dc7e79c292e1fb3cab334f99a7f41d7fcbc9
+        if not hashtag or not isinstance(hashtag, str):
+            return ''
+            
         try:
             search_url = f"{self.base_url}/web/search/topsearch/?context=hashtag&query={hashtag}"
             data = self._make_request(search_url)
             
-<<<<<<< HEAD
             if data and data.get('hashtags'):
                 return data['hashtags'][0]['hashtag']['id']
             return ''
-=======
+        except Exception as e:
+            print(f"Error al obtener ID de hashtag: {str(e)}")
+            return ''
+
+    def _analyze_profile(self, username: str) -> Dict:
+        """Analiza un perfil de Instagram de forma detallada"""
+        if not username or not isinstance(username, str):
+            return {'error': 'Nombre de usuario inválido'}
+            
+        try:
+            profile_metrics = self._get_profile_metrics(username)
+            if 'error' in profile_metrics:
+                return profile_metrics
+                
             # Verificar si cumple con los criterios de micro-influencer
-            if self.min_followers <= profile.followers <= self.max_followers:
-                engagement_rate = ((profile.mediacount * profile.avglike) / 
-                                 profile.followers) * 100
+            followers = profile_metrics.get('followers', 0)
+            if not (1000 <= followers <= 100000):
+                return {'error': 'El perfil no cumple con los criterios de micro-influencer'}
                 
-                # Análisis detallado del perfil
-                profile_data = {
-                    'username': username,
-                    'followers': profile.followers,
-                    'following': profile.followees,
-                    'posts': profile.mediacount,
-                    'avg_likes': profile.avglike,
-                    'engagement_rate': round(engagement_rate, 2),
-                    'bio': profile.biography,
-                    'is_business': profile.is_business_account,
-                    'external_url': profile.external_url,
-                    'is_verified': profile.is_verified,
-                    
-                    # Análisis de contenido
-                    'hashtags': self._extract_common_hashtags(profile),
-                    'post_frequency': self._calculate_post_frequency(profile),
-                    'content_categories': self._analyze_content_categories(profile),
-                    
-                    # Métricas adicionales
-                    'follower_growth_rate': self._calculate_growth_rate(profile),
-                    'audience_quality': self._analyze_audience_quality(profile),
-                    'brand_safety_score': self._calculate_brand_safety(profile)
-                }
+            engagement_rate = profile_metrics.get('engagement_metrics', {}).get('engagement_rate', 0)
+            
+            # Análisis detallado del perfil
+            profile_data = {
+                'username': username,
+                'followers': followers,
+                'posts': profile_metrics.get('posts', 0),
+                'engagement_rate': round(engagement_rate, 2),
+                'bio': profile_metrics.get('bio', ''),
                 
-                return profile_data
-            return None
->>>>>>> 18f8dc7e79c292e1fb3cab334f99a7f41d7fcbc9
+                # Análisis de contenido
+                'hashtags': self._extract_common_hashtags(profile_metrics),
+                'post_frequency': self._calculate_post_frequency(profile_metrics),
+                'content_categories': self._analyze_content_categories(profile_metrics),
+                
+                # Métricas adicionales
+                'audience_quality': self._analyze_audience_quality(profile_metrics),
+                'brand_safety_score': self._calculate_brand_safety(profile_metrics)
+            }
+            
+            return profile_data
+        except Exception as e:
+            return {'error': f'Error al analizar perfil: {str(e)}'}
         except Exception as e:
             print(f"Error al obtener ID de hashtag: {str(e)}")
             return ''

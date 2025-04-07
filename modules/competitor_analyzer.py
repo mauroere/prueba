@@ -160,35 +160,92 @@ class CompetitorAnalyzer:
 
     def _generate_recommendations(self, own_features: Dict, competitor_features: List[Dict]) -> List[str]:
         """Genera recomendaciones basadas en el análisis comparativo"""
+        if not own_features or not isinstance(own_features, dict):
+            raise ValueError('Características propias inválidas o no proporcionadas')
+            
+        if not competitor_features or not isinstance(competitor_features, list):
+            raise ValueError('Características de competidores inválidas o no proporcionadas')
+            
+        required_fields = ['productos', 'redes_sociales', 'medios_pago', 'envios']
+        
+        # Validar campos requeridos en own_features
+        missing_own = [field for field in required_fields if field not in own_features]
+        if missing_own:
+            raise ValueError(f'Campos faltantes en características propias: {", ".join(missing_own)}')
+            
+        # Validar campos requeridos en competitor_features
+        for i, comp in enumerate(competitor_features):
+            if not isinstance(comp, dict):
+                raise ValueError(f'Competidor {i+1} no es un diccionario válido')
+            missing_comp = [field for field in required_fields if field not in comp]
+            if missing_comp:
+                raise ValueError(f'Campos faltantes en competidor {i+1}: {", ".join(missing_comp)}')
+        
         recommendations = []
 
-        # Análisis de productos
-        avg_products = sum(comp['productos'] for comp in competitor_features) / len(competitor_features) if competitor_features else 0
-        if own_features['productos'] < avg_products:
-            recommendations.append(f"Considera ampliar tu catálogo. El promedio de productos de la competencia es {avg_products:.0f}")
+        try:
+            # Análisis de productos
+            valid_products = [comp['productos'] for comp in competitor_features 
+                            if isinstance(comp['productos'], (int, float)) and comp['productos'] > 0]
+            
+            if valid_products:
+                avg_products = sum(valid_products) / len(valid_products)
+                if own_features['productos'] < avg_products:
+                    recommendations.append(
+                        f"Considera ampliar tu catálogo. El promedio de productos de la "
+                        f"competencia es {avg_products:.0f}"
+                    )
 
-        # Análisis de redes sociales
-        competitor_socials = set()
-        for comp in competitor_features:
-            competitor_socials.update(comp['redes_sociales'])
-        missing_socials = competitor_socials - set(own_features['redes_sociales'])
-        if missing_socials:
-            recommendations.append(f"Considera crear presencia en: {', '.join(missing_socials)}")
+            # Análisis de redes sociales
+            competitor_socials = set()
+            for comp in competitor_features:
+                if isinstance(comp['redes_sociales'], (list, set)):
+                    competitor_socials.update(comp['redes_sociales'])
+            
+            if competitor_socials:
+                missing_socials = competitor_socials - set(own_features['redes_sociales'])
+                if missing_socials:
+                    recommendations.append(
+                        f"Considera crear presencia en las siguientes redes sociales: "
+                        f"{', '.join(sorted(missing_socials))}"
+                    )
 
-        # Análisis de medios de pago
-        competitor_payments = set()
-        for comp in competitor_features:
-            competitor_payments.update(comp['medios_pago'])
-        missing_payments = competitor_payments - set(own_features['medios_pago'])
-        if missing_payments:
-            recommendations.append(f"Evalúa agregar estos medios de pago: {', '.join(missing_payments)}")
+            # Análisis de medios de pago
+            competitor_payments = set()
+            for comp in competitor_features:
+                if isinstance(comp['medios_pago'], (list, set)):
+                    competitor_payments.update(comp['medios_pago'])
+            
+            if competitor_payments:
+                missing_payments = competitor_payments - set(own_features['medios_pago'])
+                if missing_payments:
+                    recommendations.append(
+                        f"Evalúa agregar estos medios de pago para mejorar la experiencia "
+                        f"de compra: {', '.join(sorted(missing_payments))}"
+                    )
 
-        # Análisis de envíos
-        competitor_shipping = set()
-        for comp in competitor_features:
-            competitor_shipping.update(comp['envios'])
-        missing_shipping = competitor_shipping - set(own_features['envios'])
-        if missing_shipping:
-            recommendations.append(f"Considera ofrecer estos métodos de envío: {', '.join(missing_shipping)}")
+            # Análisis de envíos
+            competitor_shipping = set()
+            for comp in competitor_features:
+                if isinstance(comp['envios'], (list, set)):
+                    competitor_shipping.update(comp['envios'])
+            
+            if competitor_shipping:
+                missing_shipping = competitor_shipping - set(own_features['envios'])
+                if missing_shipping:
+                    recommendations.append(
+                        f"Considera ofrecer estos métodos de envío para mejorar tu "
+                        f"servicio: {', '.join(sorted(missing_shipping))}"
+                    )
 
-        return recommendations
+            # Si no hay recomendaciones, agregar mensaje por defecto
+            if not recommendations:
+                recommendations.append(
+                    "Tu negocio está bien posicionado en comparación con la competencia. "
+                    "Continúa monitoreando el mercado para mantener tu ventaja competitiva."
+                )
+
+            return recommendations
+            
+        except Exception as e:
+            raise Exception(f'Error al generar recomendaciones: {str(e)}')
