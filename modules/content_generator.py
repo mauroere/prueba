@@ -3,10 +3,12 @@ from typing import List, Dict
 from huggingface_hub import InferenceClient
 from bs4 import BeautifulSoup
 import requests
+from .content_analyzer import ContentAnalyzer
 
 class ContentGenerator:
     def __init__(self):
         self.client = InferenceClient()
+        self.content_analyzer = ContentAnalyzer()
 
     def _get_product_info(self, tienda_url: str) -> Dict:
         """Obtiene información del producto desde la URL de Tiendanube"""
@@ -37,12 +39,37 @@ class ContentGenerator:
         }
 
         try:
+            # Generar contenido base
             response = self.client.text_generation(
                 prompts[platform],
                 model="meta-llama/Llama-2-7b-chat-hf",
                 max_new_tokens=250
             )
-            return {'content': response[0]['generated_text']}
+            content = response[0]['generated_text']
+            
+            # Analizar el contenido generado
+            metrics = {
+                'likes': 0,  # Métricas iniciales para análisis
+                'comments': 0,
+                'shares': 0,
+                'saves': 0
+            }
+            analysis = self.content_analyzer.analyze_post(content, metrics)
+            
+            # Si el análisis sugiere mejoras, regenerar el contenido
+            if analysis['sentiment']['classification'] == 'Negativo' or analysis['engagement']['score'] < 50:
+                response = self.client.text_generation(
+                    f"Mejora este contenido para hacerlo más positivo y engaging: {content}",
+                    model="meta-llama/Llama-2-7b-chat-hf",
+                    max_new_tokens=250
+                )
+                content = response[0]['generated_text']
+                analysis = self.content_analyzer.analyze_post(content, metrics)
+            
+            return {
+                'content': content,
+                'analysis': analysis
+            }
         except Exception as e:
             return {'error': str(e)}
 
