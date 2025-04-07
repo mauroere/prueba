@@ -35,7 +35,7 @@ class InfluencerFinder:
             return [{'error': str(e)}]
 
     def _analyze_profile(self, username: str) -> Dict:
-        """Analiza un perfil de Instagram"""
+        """Analiza un perfil de Instagram de forma detallada"""
         try:
             profile = instaloader.Profile.from_username(self.loader.context, username)
             
@@ -44,15 +44,31 @@ class InfluencerFinder:
                 engagement_rate = ((profile.mediacount * profile.avglike) / 
                                  profile.followers) * 100
                 
-                return {
+                # Análisis detallado del perfil
+                profile_data = {
                     'username': username,
                     'followers': profile.followers,
+                    'following': profile.followees,
                     'posts': profile.mediacount,
                     'avg_likes': profile.avglike,
                     'engagement_rate': round(engagement_rate, 2),
                     'bio': profile.biography,
-                    'is_business': profile.is_business_account
+                    'is_business': profile.is_business_account,
+                    'external_url': profile.external_url,
+                    'is_verified': profile.is_verified,
+                    
+                    # Análisis de contenido
+                    'hashtags': self._extract_common_hashtags(profile),
+                    'post_frequency': self._calculate_post_frequency(profile),
+                    'content_categories': self._analyze_content_categories(profile),
+                    
+                    # Métricas adicionales
+                    'follower_growth_rate': self._calculate_growth_rate(profile),
+                    'audience_quality': self._analyze_audience_quality(profile),
+                    'brand_safety_score': self._calculate_brand_safety(profile)
                 }
+                
+                return profile_data
             return None
         except Exception as e:
             return {'error': str(e)}

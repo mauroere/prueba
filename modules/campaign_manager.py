@@ -10,9 +10,12 @@ import json
 class CampaignManager:
     def __init__(self):
         self.templates = self._load_templates()
+        self.credentials = None
+        self.analytics = {}
+        self.scheduled_posts = []
 
     def _load_templates(self) -> Dict:
-        """Carga las plantillas predefinidas"""
+        """Carga las plantillas predefinidas para diferentes tipos de campañas"""
         return {
             'cupon': {
                 'lanzamiento': {
@@ -20,6 +23,18 @@ class CampaignManager:
                     'descripcion': 'Disfruta de un {descuento}% de descuento en tu primera compra',
                     'codigo': 'BIENVENIDO{codigo}',
                     'validez': '7 días'
+                },
+                'temporada': {
+                    'titulo': '¡Oferta de Temporada en {tienda}!',
+                    'descripcion': 'Aprovecha hasta {descuento}% OFF en productos seleccionados',
+                    'codigo': 'TEMPORADA{codigo}',
+                    'validez': '15 días'
+                },
+                'fidelizacion': {
+                    'titulo': '¡Regalo especial para ti!',
+                    'descripcion': 'Por ser cliente VIP de {tienda}, disfruta de un {descuento}% extra',
+                    'codigo': 'VIP{codigo}',
+                    'validez': '30 días'
                 }
             },
             'email': {
