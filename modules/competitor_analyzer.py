@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from fake_useragent import UserAgent
 from huggingface_hub import InferenceClient
 from .cache_manager import CacheManager
+from .metrics_analyzer import MetricsAnalyzer
 import json
 import re
 

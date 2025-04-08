@@ -1,16 +1,16 @@
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-import numpy as np
 from dataclasses import dataclass
 
 @dataclass
 class EngagementMetrics:
-    likes: int
-    comments: int
-    shares: int
-    saves: int
-    followers: int
-    posts: int
+    likes: int = 0
+    comments: int = 0
+    shares: int = 0
+    saves: int = 0
+    views: int = 0
+    followers: int = 0
+    posts: int = 0
 
     @property
     def engagement_rate(self) -> float:
@@ -18,7 +18,7 @@ class EngagementMetrics:
         if self.followers == 0 or self.posts == 0:
             return 0.0
         
-        total_interactions = self.likes + (self.comments * 2) + (self.shares * 3) + (self.saves * 4)
+        total_interactions = self.likes + (self.comments * 2) + (self.shares * 3) + (self.saves * 4) + (self.views * 0.1)
         return (total_interactions / self.posts / self.followers) * 100
 
     @property

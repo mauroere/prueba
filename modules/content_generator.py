@@ -4,7 +4,9 @@ from huggingface_hub import InferenceClient
 from bs4 import BeautifulSoup
 import requests
 import time
+import re
 from .content_analyzer import ContentAnalyzer
+from .cache_manager import CacheManager
 
 class ContentGenerator:
     def __init__(self):
