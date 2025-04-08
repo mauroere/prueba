@@ -194,4 +194,4 @@ class ApiCrudManager:
             return data
         except Exception as e:
             self.logger.error(f"Error al eliminar producto {product_id} de tienda {store_id}: {str(e)}")
-            return {'error': str(e)}"}}}
+            return {'error': str(e)}
