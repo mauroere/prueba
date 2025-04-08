@@ -3,12 +3,16 @@ from modules.content_generator import ContentGenerator
 from modules.campaign_manager import CampaignManager
 from modules.competitor_analyzer import CompetitorAnalyzer
 from modules.influencer_finder import InfluencerFinder
+from modules.user_manager import UserManager
+from modules.dashboard_manager import DashboardManager
 
 # Inicialización de módulos
 content_gen = ContentGenerator()
 campaign_mgr = CampaignManager()
 competitor_analyzer = CompetitorAnalyzer()
 influencer_finder = InfluencerFinder()
+user_manager = UserManager()
+dashboard_manager = DashboardManager()
 
 # Configuración de la página
 st.set_page_config(
@@ -24,12 +28,64 @@ st.markdown("""
     Genera contenido, analiza la competencia y gestiona tus campañas de marketing.
 """)
 
-# Sidebar para navegación
-st.sidebar.title("Menú")
-option = st.sidebar.selectbox(
-    "Selecciona una función",
-    ["Generador de Contenido", "Análisis de Competencia", "Plantillas de Campañas", "Buscador de Influencers"]
-)
+# Gestión de sesión
+if 'user_id' not in st.session_state:
+    st.session_state.user_id = None
+
+# Login/Registro
+if not st.session_state.user_id:
+    st.sidebar.title("Acceso")
+    login_option = st.sidebar.radio("Seleccione una opción", ["Iniciar Sesión", "Registrarse"])
+    
+    if login_option == "Iniciar Sesión":
+        with st.sidebar.form("login_form"):
+            email = st.text_input("Email")
+            username = st.text_input("Usuario")
+            if st.form_submit_button("Iniciar Sesión"):
+                # Simulamos login básico
+                user = next((u for u in user_manager.list_users() if u['email'] == email and u['username'] == username), None)
+                if user:
+                    st.session_state.user_id = user['user_id']
+                    st.rerun()
+                else:
+                    st.error("Credenciales inválidas")
+    else:
+        with st.sidebar.form("register_form"):
+            new_username = st.text_input("Usuario")
+            new_email = st.text_input("Email")
+            new_full_name = st.text_input("Nombre completo")
+            if st.form_submit_button("Registrarse"):
+                result = user_manager.create_user({
+                    'username': new_username,
+                    'email': new_email,
+                    'full_name': new_full_name
+                })
+                if 'error' in result:
+                    st.error(result['error'])
+                else:
+                    st.session_state.user_id = result['user_id']
+                    st.success("Registro exitoso")
+                    st.rerun()
+
+# Si el usuario está autenticado
+if st.session_state.user_id:
+    user_data = user_manager.get_user_data(st.session_state.user_id)
+    
+    # Renderizar dashboard según el rol
+    if user_data['role'] == 'admin':
+        dashboard_manager.render_admin_dashboard(st.session_state.user_id)
+    else:
+        # Sidebar para navegación de usuario
+        st.sidebar.title("Menú")
+        option = st.sidebar.selectbox(
+            "Selecciona una función",
+            ["Dashboard", "Generador de Contenido", "Análisis de Competencia", "Plantillas de Campañas", "Buscador de Influencers"]
+        )
+        
+        # Botón de cerrar sesión
+        if st.sidebar.button("Cerrar Sesión"):
+            st.session_state.user_id = None
+            st.rerun()
 
 # URL de la tienda
 tienda_url = st.text_input("Ingresa la URL de tu tienda en Tiendanube:")

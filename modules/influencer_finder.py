@@ -15,10 +15,11 @@ class InfluencerFinder:
         self.ua = UserAgent()
         self.base_url = "https://www.instagram.com"
         self.api_url = "https://www.instagram.com/graphql/query"
-        self.request_delay = 2  # Delay entre requests en segundos
+        self.request_delay = 3  # Aumentado para evitar rate limiting
         self.last_request_time = 0
-        self.max_retries = 3
+        self.max_retries = 4
         self.metrics_analyzer = MetricsAnalyzer()
+        self.cache_manager = CacheManager(expiration_minutes=180)
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': self.ua.random,
@@ -27,8 +28,15 @@ class InfluencerFinder:
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
-            'Cache-Control': 'max-age=0'
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
         })
+        self.engagement_thresholds = {
+            'min_followers': 1000,
+            'max_followers': 100000,
+            'min_engagement': 2.5,
+            'min_quality_score': 60
+        }
         self._init_session()
 
     def _rate_limit_delay(self):

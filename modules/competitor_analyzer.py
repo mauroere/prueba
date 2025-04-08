@@ -20,10 +20,13 @@ class CompetitorAnalyzer:
             self.chrome_options.add_argument('--headless')
             self.chrome_options.add_argument('--no-sandbox')
             self.chrome_options.add_argument('--disable-dev-shm-usage')
+            self.chrome_options.add_argument('--disable-gpu')
+            self.chrome_options.add_argument('--window-size=1920x1080')
             self.client = InferenceClient()
             self.max_retries = 3
-            self.request_timeout = 10
-            self.cache = CacheManager(expiration_minutes=60)
+            self.request_timeout = 15
+            self.cache = CacheManager(expiration_minutes=120)
+            self.metrics_analyzer = MetricsAnalyzer()
         except Exception as e:
             raise Exception(f"Error al inicializar CompetitorAnalyzer: {str(e)}")
 

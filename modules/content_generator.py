@@ -12,9 +12,25 @@ class ContentGenerator:
             self.client = InferenceClient()
             self.content_analyzer = ContentAnalyzer()
             self.valid_platforms = ['Instagram', 'TikTok', 'Facebook']
-            self.keywords_cache = {}
+            self.cache_manager = CacheManager(expiration_minutes=120)
             self.max_retries = 3
             self.timeout = 10
+            self.model_name = "meta-llama/Llama-2-7b-chat-hf"
+            self.generation_config = {
+                'max_new_tokens': 300,
+                'temperature': 0.8,
+                'top_p': 0.95,
+                'repetition_penalty': 1.3,
+                'do_sample': True,
+                'num_beams': 4
+            }
+            self.sentiment_boost_prompts = {
+                'positive': "Mejora el tono positivo y entusiasta de este contenido manteniendo su autenticidad:",
+                'engaging': "Optimiza este contenido para maximizar el engagement manteniendo su esencia:",
+                'trending': "Adapta este contenido a las últimas tendencias sin perder su mensaje principal:",
+                'emotional': "Añade un toque emocional y personal a este contenido:",
+                'professional': "Dale un tono más profesional y autoritativo a este contenido:"
+            }
         except Exception as e:
             raise Exception(f"Error al inicializar ContentGenerator: {str(e)}")
 
@@ -171,14 +187,38 @@ class ContentGenerator:
 
             for attempt in range(max_attempts):
                 try:
-                    # Generar contenido base
+                    # Generar contenido base con configuración optimizada
                     response = self.client.text_generation(
                         prompts[platform],
-                        model="meta-llama/Llama-2-7b-chat-hf",
-                        max_new_tokens=250,
-                        temperature=0.7,  # Ajustar creatividad
-                        top_p=0.9  # Mantener coherencia
+                        model=self.model_name,
+                        **self.generation_config
                     )
+                    
+                    if not response or not response[0].get('generated_text'):
+                        continue
+
+                    content = response[0]['generated_text'].strip()
+                    
+                    # Analizar sentimiento y engagement del contenido generado
+                    initial_analysis = self.content_analyzer.analyze_post(content, {})
+                    
+                    # Mejorar el contenido según el análisis
+                    if initial_analysis['sentiment']['classification'] != 'Positivo':
+                        response = self.client.text_generation(
+                            f"{self.sentiment_boost_prompts['positive']} {content}",
+                            model=self.model_name,
+                            **self.generation_config
+                        )
+                        content = response[0]['generated_text'].strip()
+                    
+                    # Adaptar a tendencias si es necesario
+                    if platform in ['TikTok', 'Instagram']:
+                        response = self.client.text_generation(
+                            f"{self.sentiment_boost_prompts['trending']} {content}",
+                            model=self.model_name,
+                            **self.generation_config
+                        )
+                        content = response[0]['generated_text'].strip()
 
                     if not response or not response[0].get('generated_text'):
                         if attempt == max_attempts - 1:
@@ -193,14 +233,19 @@ class ContentGenerator:
                             return {'error': 'Contenido generado demasiado corto'}
                         continue
 
-                    # Analizar el contenido generado
-                    metrics = {
-                        'likes': 0,
-                        'comments': 0,
-                        'shares': 0,
-                        'saves': 0
-                    }
+                    # Analizar el contenido generado con métricas predictivas
+                    metrics = self._predict_engagement_metrics(content, platform)
                     analysis = self.content_analyzer.analyze_post(content, metrics)
+                    
+                    # Optimizar contenido según métricas y análisis
+                    if analysis['engagement']['score'] < 70:
+                        response = self.client.text_generation(
+                            f"{self.sentiment_boost_prompts['engaging']} {content}",
+                            model=self.model_name,
+                            **self.generation_config
+                        )
+                        content = response[0]['generated_text'].strip()
+                        analysis = self.content_analyzer.analyze_post(content, metrics)
                     
                     # Verificar calidad del contenido
                     if analysis['sentiment']['classification'] == 'Negativo' or analysis['engagement']['score'] < 50:
@@ -210,11 +255,11 @@ class ContentGenerator:
                         # Último intento: mejorar el contenido existente
                         response = self.client.text_generation(
                             f"Mejora este contenido para hacerlo más positivo y engaging, manteniendo el mensaje principal: {content}",
-                            model="meta-llama/Llama-2-7b-chat-hf",
-                            max_new_tokens=250,
-                            temperature=0.8
+                            model=self.model_name,
+                            **self.generation_config
                         )
                         content = response[0]['generated_text'].strip()
+                        metrics = self._predict_engagement_metrics(content, platform)
                         analysis = self.content_analyzer.analyze_post(content, metrics)
                     
                     # Si llegamos aquí, tenemos contenido válido
@@ -303,6 +348,83 @@ class ContentGenerator:
         except Exception as e:
             return {'error': str(e)}
 
+    def _predict_engagement_metrics(self, content: str, platform: str) -> Dict:
+        """Predice métricas de engagement basadas en análisis de contenido y plataforma"""
+        try:
+            # Análisis inicial del contenido
+            sentiment_score = TextBlob(content).sentiment.polarity
+            word_count = len(content.split())
+            hashtag_count = len(re.findall(r'#\w+', content))
+            emoji_count = len(re.findall(r'[\U0001F300-\U0001F9FF]', content))
+            
+            # Factores de predicción por plataforma
+            platform_factors = {
+                'Instagram': {
+                    'optimal_length': (80, 150),
+                    'optimal_hashtags': (5, 15),
+                    'optimal_emojis': (2, 8)
+                },
+                'TikTok': {
+                    'optimal_length': (50, 100),
+                    'optimal_hashtags': (3, 8),
+                    'optimal_emojis': (1, 5)
+                },
+                'Facebook': {
+                    'optimal_length': (100, 250),
+                    'optimal_hashtags': (2, 5),
+                    'optimal_emojis': (1, 4)
+                }
+            }
+            
+            factors = platform_factors.get(platform, platform_factors['Instagram'])
+            
+            # Calcular scores basados en optimización
+            length_score = self._calculate_range_score(
+                word_count,
+                factors['optimal_length'][0],
+                factors['optimal_length'][1]
+            )
+            
+            hashtag_score = self._calculate_range_score(
+                hashtag_count,
+                factors['optimal_hashtags'][0],
+                factors['optimal_hashtags'][1]
+            )
+            
+            emoji_score = self._calculate_range_score(
+                emoji_count,
+                factors['optimal_emojis'][0],
+                factors['optimal_emojis'][1]
+            )
+            
+            # Predicción de métricas base
+            base_engagement = (length_score + hashtag_score + emoji_score + max(sentiment_score, 0)) / 4
+            
+            # Predicción de métricas específicas
+            predicted_likes = int(base_engagement * 100)
+            predicted_comments = int(base_engagement * 20)
+            predicted_shares = int(base_engagement * 10)
+            predicted_saves = int(base_engagement * 5)
+            
+            return {
+                'likes': predicted_likes,
+                'comments': predicted_comments,
+                'shares': predicted_shares,
+                'saves': predicted_saves
+            }
+        except Exception as e:
+            print(f"Error en predicción de métricas: {str(e)}")
+            return {'likes': 0, 'comments': 0, 'shares': 0, 'saves': 0}
+    
+    def _calculate_range_score(self, value: int, min_optimal: int, max_optimal: int) -> float:
+        """Calcula un score basado en el rango óptimo"""
+        if min_optimal <= value <= max_optimal:
+            return 1.0
+        elif value < min_optimal:
+            return value / min_optimal
+        else:
+            return max_optimal / value
+    
     def generate_blog_post(self, tienda_url: str) -> Dict:
         """Genera un artículo de blog optimizado para SEO"""
         product_info = self._get_product_info(tienda_url)
