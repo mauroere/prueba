@@ -3,6 +3,7 @@ from typing import List, Dict
 from huggingface_hub import InferenceClient
 from bs4 import BeautifulSoup
 import requests
+import time
 from .content_analyzer import ContentAnalyzer
 
 class ContentGenerator:
