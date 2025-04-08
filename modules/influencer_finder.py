@@ -19,6 +19,17 @@ class InfluencerFinder:
         self.last_request_time = 0
         self.max_retries = 3
         self.metrics_analyzer = MetricsAnalyzer()
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': self.ua.random,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0'
+        })
+        self._init_session()
 
     def _rate_limit_delay(self):
         """Implementa un delay entre requests para evitar rate limiting"""
@@ -28,6 +39,15 @@ class InfluencerFinder:
             time.sleep(self.request_delay - time_since_last_request)
         self.last_request_time = time.time()
 
+    def _init_session(self):
+        """Inicializa la sesión de Instagram obteniendo cookies necesarias"""
+        try:
+            response = self.session.get(self.base_url)
+            response.raise_for_status()
+            self.session.cookies.update(response.cookies)
+        except Exception as e:
+            print(f"Error al inicializar sesión: {str(e)}")
+
     def _make_request(self, url: str, max_retries: int = None) -> Optional[Dict]:
         """Realiza una petición HTTP con reintentos y manejo de errores"""
         if max_retries is None:
@@ -36,14 +56,32 @@ class InfluencerFinder:
         for attempt in range(max_retries):
             try:
                 self._rate_limit_delay()
-                headers = {'User-Agent': self.ua.random}
-                response = requests.get(url, headers=headers, timeout=10)
+                response = self.session.get(
+                    url,
+                    timeout=10,
+                    allow_redirects=True,
+                    headers={'X-Requested-With': 'XMLHttpRequest'}
+                )
+                
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get('Retry-After', 30))
+                    time.sleep(retry_after)
+                    continue
+                    
                 response.raise_for_status()
                 return response.json()
             except RequestException as e:
+                if 'Too Many Requests' in str(e):
+                    time.sleep(30)
+                    continue
                 if attempt == max_retries - 1:
                     raise e
                 time.sleep(2 ** attempt)  # Exponential backoff
+            except ValueError as e:
+                if attempt == max_retries - 1:
+                    print(f"Error al procesar respuesta JSON: {str(e)}")
+                    return None
+                time.sleep(2 ** attempt)
         return None
 
     @lru_cache(maxsize=100)
