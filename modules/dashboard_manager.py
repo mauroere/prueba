@@ -1,15 +1,115 @@
-import streamlit as st
-from typing import Dict, Optional
-from datetime import datetime, timedelta
-import plotly.graph_objects as go
-import plotly.express as px
-from .user_manager import UserManager
+import os
+from typing import Dict, List, Optional
+from dotenv import load_dotenv
+from .logger_config import LoggerConfig
+from .api_crud_manager import ApiCrudManager
+
+# Cargar variables de entorno
+load_dotenv()
 
 class DashboardManager:
     def __init__(self):
-        self.user_manager = UserManager()
+        try:
+            # Configurar logger
+            self.logger = LoggerConfig.get_logger('dashboard_manager')
+            self.logger.info('Inicializando DashboardManager')
+            
+            # Inicializar el gestor de CRUD de API
+            self.api_crud = ApiCrudManager()
+            
+            self.logger.info('DashboardManager inicializado correctamente')
+        except Exception as e:
+            self.logger.error(f"Error al inicializar DashboardManager: {str(e)}")
+            raise Exception(f"Error al inicializar DashboardManager: {str(e)}")
 
     def render_user_dashboard(self, user_id: str):
+        """Renderiza el dashboard principal del usuario"""
+        try:
+            # Implementar la lógica del dashboard aquí
+            pass
+        except Exception as e:
+            self.logger.error(f"Error al renderizar dashboard de usuario {user_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def get_stores(self, page: int = 1, limit: int = 10) -> Dict:
+        """Obtiene la lista de tiendas para mostrar en el dashboard"""
+        try:
+            return self.api_crud.get_stores(page, limit)
+        except Exception as e:
+            self.logger.error(f"Error al obtener tiendas: {str(e)}")
+            return {'error': str(e)}
+    
+    def get_store_details(self, store_id: str) -> Dict:
+        """Obtiene los detalles de una tienda específica"""
+        try:
+            return self.api_crud.get_store(store_id)
+        except Exception as e:
+            self.logger.error(f"Error al obtener detalles de tienda {store_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def create_new_store(self, store_data: Dict) -> Dict:
+        """Crea una nueva tienda"""
+        try:
+            return self.api_crud.create_store(store_data)
+        except Exception as e:
+            self.logger.error(f"Error al crear tienda: {str(e)}")
+            return {'error': str(e)}
+    
+    def update_store_info(self, store_id: str, store_data: Dict) -> Dict:
+        """Actualiza la información de una tienda"""
+        try:
+            return self.api_crud.update_store(store_id, store_data)
+        except Exception as e:
+            self.logger.error(f"Error al actualizar tienda {store_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def delete_store_data(self, store_id: str) -> Dict:
+        """Elimina una tienda"""
+        try:
+            return self.api_crud.delete_store(store_id)
+        except Exception as e:
+            self.logger.error(f"Error al eliminar tienda {store_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def get_store_products(self, store_id: str, page: int = 1, limit: int = 10) -> Dict:
+        """Obtiene la lista de productos de una tienda"""
+        try:
+            return self.api_crud.get_products(store_id, page, limit)
+        except Exception as e:
+            self.logger.error(f"Error al obtener productos de tienda {store_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def get_product_details(self, store_id: str, product_id: str) -> Dict:
+        """Obtiene los detalles de un producto específico"""
+        try:
+            return self.api_crud.get_product(store_id, product_id)
+        except Exception as e:
+            self.logger.error(f"Error al obtener detalles de producto {product_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def create_new_product(self, store_id: str, product_data: Dict) -> Dict:
+        """Crea un nuevo producto en una tienda"""
+        try:
+            return self.api_crud.create_product(store_id, product_data)
+        except Exception as e:
+            self.logger.error(f"Error al crear producto en tienda {store_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def update_product_info(self, store_id: str, product_id: str, product_data: Dict) -> Dict:
+        """Actualiza la información de un producto"""
+        try:
+            return self.api_crud.update_product(store_id, product_id, product_data)
+        except Exception as e:
+            self.logger.error(f"Error al actualizar producto {product_id}: {str(e)}")
+            return {'error': str(e)}
+    
+    def delete_product_data(self, store_id: str, product_id: str) -> Dict:
+        """Elimina un producto"""
+        try:
+            return self.api_crud.delete_product(store_id, product_id)
+        except Exception as e:
+            self.logger.error(f"Error al eliminar producto {product_id}: {str(e)}")
+            return {'error': str(e)}
         """Renderiza el dashboard del usuario"""
         user_data = self.user_manager.get_user_data(user_id)
         if 'error' in user_data:
