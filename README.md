@@ -2,8 +2,23 @@
 
 ## Requisitos Previos
 
-- Python 3.8 o superior
-- pip (gestor de paquetes de Python)
+1. **Python 3.8 o superior**
+   - Descarga Python desde [python.org](https://www.python.org/downloads/)
+   - Durante la instalación, asegúrate de marcar la opción "Add Python to PATH"
+   - Verifica la instalación abriendo una nueva terminal y ejecutando:
+     ```bash
+     python --version
+     ```
+
+2. **pip (gestor de paquetes de Python)**
+   - pip viene incluido con Python, pero asegúrate de tenerlo actualizado:
+     ```bash
+     python -m pip install --upgrade pip
+     ```
+   - Verifica la instalación de pip:
+     ```bash
+     python -m pip --version
+     ```
 
 ## Instalación
 
