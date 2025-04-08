@@ -10,6 +10,7 @@ from modules.dashboard_manager import DashboardManager
 from modules.logger_config import LoggerConfig
 from modules.trend_analyzer import TrendAnalyzer
 from modules.notification_manager import NotificationManager
+from modules.cache_manager import CacheManager
 
 # Cargar variables de entorno
 load_dotenv()
