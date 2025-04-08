@@ -2,6 +2,8 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 
+__all__ = ['MetricsAnalyzer', 'EngagementMetrics']
+
 @dataclass
 class EngagementMetrics:
     likes: int = 0

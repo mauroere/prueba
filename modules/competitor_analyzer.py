@@ -1,3 +1,5 @@
+import json
+import re
 from typing import Dict, List
 import requests
 from bs4 import BeautifulSoup
@@ -10,8 +12,6 @@ from fake_useragent import UserAgent
 from huggingface_hub import InferenceClient
 from .cache_manager import CacheManager
 from .metrics_analyzer import MetricsAnalyzer
-import json
-import re
 
 class CompetitorAnalyzer:
     def __init__(self):
