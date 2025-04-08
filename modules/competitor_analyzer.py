@@ -42,11 +42,298 @@ class CompetitorAnalyzer:
             self.cache = CacheManager(expiration_minutes=int(os.getenv('CACHE_EXPIRATION_MINUTES', 120)))
             self.metrics_analyzer = MetricsAnalyzer()
             
+            # Configurar API de Tiendanube
+            self.tiendanube_api_url = os.getenv('TIENDANUBE_API_URL')
+            self.tiendanube_app_id = os.getenv('TIENDANUBE_APP_ID')
+            self.tiendanube_client_secret = os.getenv('TIENDANUBE_CLIENT_SECRET')
+            
             self.logger.info('CompetitorAnalyzer inicializado correctamente')
         except Exception as e:
             self.logger.error(f"Error al inicializar CompetitorAnalyzer: {str(e)}")
             raise Exception(f"Error al inicializar CompetitorAnalyzer: {str(e)}")
 
+    def _get_tiendanube_store_info(self, store_id: str) -> Dict:
+        """Obtiene información detallada de una tienda usando la API de Tiendanube"""
+        try:
+            headers = {
+                'Authentication': f'Bearer {self.tiendanube_client_secret}',
+                'User-Agent': self.ua.random
+            }
+            
+            # Obtener información básica de la tienda
+            store_url = f"{self.tiendanube_api_url}/store/{store_id}"
+            response = requests.get(store_url, headers=headers)
+            store_data = response.json()
+            
+            # Obtener productos y precios históricos
+            products_url = f"{self.tiendanube_api_url}/store/{store_id}/products"
+            products_response = requests.get(products_url, headers=headers)
+            products_data = products_response.json()
+            
+            # Analizar tendencias de precios
+            price_trends = self._analyze_price_trends(products_data)
+            
+            return {
+                'store_info': store_data,
+                'price_trends': price_trends,
+                'competitive_score': self._calculate_competitive_score(store_data, products_data)
+            }
+        except Exception as e:
+            self.logger.error(f"Error al obtener información de Tiendanube: {str(e)}")
+            return {'error': str(e)}
+
+    def _analyze_price_trends(self, products_data: List[Dict]) -> Dict:
+        """Analiza tendencias históricas de precios y genera predicciones"""
+        try:
+            price_data = {
+                'current_avg': 0,
+                'historical_trend': [],
+                'price_prediction': None,
+                'price_volatility': 0
+            }
+            
+            if not products_data:
+                return price_data
+                
+            # Calcular promedio actual y tendencias
+            prices = [float(p['price']) for p in products_data if 'price' in p]
+            if prices:
+                price_data['current_avg'] = sum(prices) / len(prices)
+                price_data['price_volatility'] = self._calculate_price_volatility(prices)
+                
+                # Analizar tendencia histórica (últimos 30 días)
+                historical_prices = self._get_historical_prices(products_data)
+                price_data['historical_trend'] = historical_prices
+                
+                # Generar predicción simple para próximos 7 días
+                if len(historical_prices) >= 7:
+                    price_data['price_prediction'] = self._predict_future_prices(historical_prices)
+            
+            return price_data
+        except Exception as e:
+            self.logger.error(f"Error al analizar tendencias de precios: {str(e)}")
+            return price_data
+
+    def _calculate_competitive_score(self, store_data: Dict, products_data: List[Dict]) -> Dict:
+        """Calcula una puntuación competitiva basada en múltiples factores"""
+        try:
+            scores = {
+                'overall_score': 0,
+                'categories': {
+                    'product_variety': 0,
+                    'pricing_strategy': 0,
+                    'social_presence': 0,
+                    'customer_service': 0
+                },
+                'strengths': [],
+                'weaknesses': []
+            }
+            
+            # Evaluar variedad de productos
+            product_score = min(len(products_data) / 100, 1) * 100
+            scores['categories']['product_variety'] = product_score
+            
+            # Evaluar estrategia de precios
+            price_score = self._evaluate_pricing_strategy(products_data)
+            scores['categories']['pricing_strategy'] = price_score
+            
+            # Evaluar presencia en redes sociales
+            social_score = self._evaluate_social_presence(store_data)
+            scores['categories']['social_presence'] = social_score
+            
+            # Evaluar servicio al cliente
+            service_score = self._evaluate_customer_service(store_data)
+            scores['categories']['customer_service'] = service_score
+            
+            # Calcular puntuación general
+            scores['overall_score'] = sum(scores['categories'].values()) / len(scores['categories'])
+            
+            # Identificar fortalezas y debilidades
+            for category, score in scores['categories'].items():
+                if score >= 75:
+                    scores['strengths'].append(category)
+                elif score <= 40:
+                    scores['weaknesses'].append(category)
+            
+            return scores
+        except Exception as e:
+            self.logger.error(f"Error al calcular puntuación competitiva: {str(e)}")
+            return {'overall_score': 0, 'categories': {}, 'strengths': [], 'weaknesses': []}
+
+    def _calculate_price_volatility(self, prices: List[float]) -> float:
+        """Calcula la volatilidad de precios usando desviación estándar"""
+        try:
+            if len(prices) < 2:
+                return 0
+                
+            import numpy as np
+            return float(np.std(prices) / np.mean(prices) * 100)
+        except Exception as e:
+            self.logger.error(f"Error al calcular volatilidad de precios: {str(e)}")
+            return 0
+    
+    def _get_historical_prices(self, products_data: List[Dict]) -> List[Dict]:
+        """Obtiene el historial de precios de los últimos 30 días"""
+        try:
+            historical_prices = []
+            for product in products_data:
+                if 'price_history' in product:
+                    for date, price in product['price_history'].items():
+                        historical_prices.append({
+                            'date': date,
+                            'price': float(price)
+                        })
+            
+            # Ordenar por fecha y limitar a 30 días
+            from datetime import datetime, timedelta
+            cutoff_date = datetime.now() - timedelta(days=30)
+            return sorted(
+                [p for p in historical_prices if datetime.strptime(p['date'], '%Y-%m-%d') >= cutoff_date],
+                key=lambda x: x['date']
+            )
+        except Exception as e:
+            self.logger.error(f"Error al obtener historial de precios: {str(e)}")
+            return []
+    
+    def _predict_future_prices(self, historical_prices: List[Dict]) -> List[Dict]:
+        """Predice precios futuros usando regresión lineal simple"""
+        try:
+            from sklearn.linear_model import LinearRegression
+            import numpy as np
+            from datetime import datetime, timedelta
+            
+            # Preparar datos para la regresión
+            X = np.array(range(len(historical_prices))).reshape(-1, 1)
+            y = np.array([p['price'] for p in historical_prices])
+            
+            # Entrenar modelo
+            model = LinearRegression()
+            model.fit(X, y)
+            
+            # Predecir próximos 7 días
+            future_dates = []
+            last_date = datetime.strptime(historical_prices[-1]['date'], '%Y-%m-%d')
+            for i in range(1, 8):
+                future_date = last_date + timedelta(days=i)
+                prediction = model.predict([[len(historical_prices) + i - 1]])[0]
+                future_dates.append({
+                    'date': future_date.strftime('%Y-%m-%d'),
+                    'predicted_price': max(0, float(prediction))
+                })
+            
+            return future_dates
+        except Exception as e:
+            self.logger.error(f"Error al predecir precios futuros: {str(e)}")
+            return []
+    
+    def _evaluate_pricing_strategy(self, products_data: List[Dict]) -> float:
+        """Evalúa la estrategia de precios considerando múltiples factores"""
+        try:
+            if not products_data:
+                return 0
+                
+            score = 0
+            total_factors = 4
+            
+            # Factor 1: Variabilidad de precios
+            prices = [float(p['price']) for p in products_data if 'price' in p]
+            price_volatility = self._calculate_price_volatility(prices)
+            if price_volatility < 20:  # Precios estables
+                score += 25
+            
+            # Factor 2: Rango de precios competitivo
+            if prices:
+                avg_price = sum(prices) / len(prices)
+                if 100 <= avg_price <= 1000:  # Rango medio
+                    score += 25
+            
+            # Factor 3: Descuentos y promociones
+            discount_count = sum(1 for p in products_data if p.get('discount_price'))
+            if 0.1 <= discount_count / len(products_data) <= 0.3:  # 10-30% productos con descuento
+                score += 25
+            
+            # Factor 4: Consistencia en precios similares
+            categories = {}
+            for product in products_data:
+                cat = product.get('category', 'other')
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(float(product['price']))
+            
+            category_consistency = 0
+            for prices in categories.values():
+                if len(prices) > 1:
+                    volatility = self._calculate_price_volatility(prices)
+                    if volatility < 15:  # Precios consistentes dentro de categoría
+                        category_consistency += 1
+            
+            if categories and category_consistency / len(categories) >= 0.7:
+                score += 25
+            
+            return score
+        except Exception as e:
+            self.logger.error(f"Error al evaluar estrategia de precios: {str(e)}")
+            return 0
+    
+    def _evaluate_social_presence(self, store_data: Dict) -> float:
+        """Evalúa la presencia en redes sociales"""
+        try:
+            score = 0
+            social_networks = store_data.get('social_networks', {})
+            
+            # Evaluar presencia en cada red social principal
+            platforms = ['facebook', 'instagram', 'twitter', 'tiktok']
+            for platform in platforms:
+                if platform in social_networks:
+                    score += 15  # Puntos base por presencia
+                    
+                    # Puntos adicionales por actividad
+                    if social_networks[platform].get('followers', 0) > 1000:
+                        score += 5
+                    if social_networks[platform].get('posts_last_month', 0) > 4:
+                        score += 5
+            
+            return min(score, 100)
+        except Exception as e:
+            self.logger.error(f"Error al evaluar presencia social: {str(e)}")
+            return 0
+    
+    def _evaluate_customer_service(self, store_data: Dict) -> float:
+        """Evalúa la calidad del servicio al cliente"""
+        try:
+            score = 0
+            service_data = store_data.get('customer_service', {})
+            
+            # Factor 1: Tiempo de respuesta
+            response_time = service_data.get('avg_response_time', 0)
+            if response_time <= 1:  # 1 hora o menos
+                score += 25
+            elif response_time <= 4:
+                score += 15
+            
+            # Factor 2: Calificación de clientes
+            rating = service_data.get('customer_rating', 0)
+            if rating >= 4.5:
+                score += 25
+            elif rating >= 4.0:
+                score += 15
+            
+            # Factor 3: Canales de atención
+            channels = service_data.get('support_channels', [])
+            if len(channels) >= 3:
+                score += 25
+            elif len(channels) >= 2:
+                score += 15
+            
+            # Factor 4: Políticas de devolución
+            if service_data.get('has_return_policy', False):
+                score += 25
+            
+            return score
+        except Exception as e:
+            self.logger.error(f"Error al evaluar servicio al cliente: {str(e)}")
+            return 0
+    
     def _get_store_info(self, url: str) -> Dict:
         """Obtiene información básica de una tienda"""
         if not url or not isinstance(url, str):
