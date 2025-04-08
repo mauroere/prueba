@@ -16,3 +16,4 @@ google-auth-httplib2>=0.1.1
 google-api-python-client>=2.111.0
 fake-useragent>=1.4.0
 transformers>=4.36.2
+textblob>=0.17.1

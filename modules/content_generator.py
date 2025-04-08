@@ -55,9 +55,25 @@ class ContentGenerator:
             
         for attempt in range(self.max_retries):
             try:
-                response = requests.get(url, timeout=self.timeout)
-                return response.status_code == 200
-            except requests.RequestException:
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                response = requests.get(url, headers=headers, timeout=self.timeout, allow_redirects=True)
+                response.raise_for_status()
+                return True
+            except requests.exceptions.ConnectionError:
+                if attempt == self.max_retries - 1:
+                    return False
+                time.sleep(2 ** attempt)
+            except requests.exceptions.Timeout:
+                if attempt == self.max_retries - 1:
+                    return False
+                time.sleep(2 ** attempt)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    return False
+                if attempt == self.max_retries - 1:
+                    return False
+                time.sleep(2 ** attempt)
+            except Exception:
                 if attempt == self.max_retries - 1:
                     return False
                 time.sleep(2 ** attempt)

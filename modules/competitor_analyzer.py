@@ -7,6 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from fake_useragent import UserAgent
+from huggingface_hub import InferenceClient
 from .cache_manager import CacheManager
 import json
 import re
@@ -70,8 +71,8 @@ class CompetitorAnalyzer:
                     return info
                 except Exception as e:
                     return {'error': f'Error al procesar el HTML: {str(e)}'}
-        except requests.exceptions.RequestException as e:
-            if attempt == self.max_retries - 1:
+            except requests.exceptions.RequestException as e:
+                if attempt == self.max_retries - 1:
                     return {'error': f'Error al obtener información de la tienda: {str(e)}'}
                 time.sleep(2 ** attempt)  # Backoff exponencial
         return {'error': 'Máximo número de intentos alcanzado'}
