@@ -44,3 +44,25 @@ streamlit run main.py
 - Asegúrate de tener todas las dependencias instaladas correctamente
 - La aplicación requiere conexión a internet para funcionar
 - Algunas funciones pueden requerir autenticación o tokens de API
+
+## Despliegue en Producción
+
+1. **Configuración del Entorno**
+   - Crea un archivo `.env` en la raíz del proyecto
+   - Configura las variables de entorno necesarias (API keys, tokens, etc.)
+
+2. **Plataformas de Despliegue Recomendadas**
+   - [Heroku](https://heroku.com)
+   - [Streamlit Cloud](https://streamlit.io/cloud)
+   - [Railway](https://railway.app)
+
+3. **Pasos para el Despliegue**
+   - Asegúrate de tener el archivo `requirements.txt` actualizado
+   - Configura las variables de entorno en la plataforma de despliegue
+   - Conecta tu repositorio de GitHub con la plataforma elegida
+   - Sigue las instrucciones específicas de la plataforma para el despliegue
+
+4. **Consideraciones de Seguridad**
+   - No incluyas archivos de configuración sensibles en el repositorio
+   - Utiliza variables de entorno para las credenciales
+   - Mantén actualizadas las dependencias por seguridad
