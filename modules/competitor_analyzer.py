@@ -1,5 +1,6 @@
 import json
 import re
+import os
 from typing import Dict, List
 import requests
 from bs4 import BeautifulSoup
@@ -10,12 +11,22 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from fake_useragent import UserAgent
 from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
 from .cache_manager import CacheManager
 from .metrics_analyzer import MetricsAnalyzer
+from .logger_config import LoggerConfig
+
+# Cargar variables de entorno
+load_dotenv()
 
 class CompetitorAnalyzer:
     def __init__(self):
         try:
+            # Configurar logger
+            self.logger = LoggerConfig.get_logger('competitor_analyzer')
+            self.logger.info('Inicializando CompetitorAnalyzer')
+            
+            # Configurar servicios y opciones
             self.ua = UserAgent()
             self.chrome_options = Options()
             self.chrome_options.add_argument('--headless')
@@ -23,12 +34,17 @@ class CompetitorAnalyzer:
             self.chrome_options.add_argument('--disable-dev-shm-usage')
             self.chrome_options.add_argument('--disable-gpu')
             self.chrome_options.add_argument('--window-size=1920x1080')
-            self.client = InferenceClient()
-            self.max_retries = 3
-            self.request_timeout = 15
-            self.cache = CacheManager(expiration_minutes=120)
+            
+            # Configurar cliente y parámetros
+            self.client = InferenceClient(token=os.getenv('HUGGINGFACE_API_KEY'))
+            self.max_retries = int(os.getenv('MAX_RETRIES', 3))
+            self.request_timeout = int(os.getenv('SELENIUM_TIMEOUT', 15))
+            self.cache = CacheManager(expiration_minutes=int(os.getenv('CACHE_EXPIRATION_MINUTES', 120)))
             self.metrics_analyzer = MetricsAnalyzer()
+            
+            self.logger.info('CompetitorAnalyzer inicializado correctamente')
         except Exception as e:
+            self.logger.error(f"Error al inicializar CompetitorAnalyzer: {str(e)}")
             raise Exception(f"Error al inicializar CompetitorAnalyzer: {str(e)}")
 
     def _get_store_info(self, url: str) -> Dict:

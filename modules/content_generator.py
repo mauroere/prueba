@@ -5,19 +5,29 @@ from bs4 import BeautifulSoup
 import requests
 import time
 import re
+from dotenv import load_dotenv
 from .content_analyzer import ContentAnalyzer
 from modules.cache_manager import CacheManager
+from modules.logger_config import LoggerConfig
+
+# Cargar variables de entorno
+load_dotenv()
 
 class ContentGenerator:
     def __init__(self):
         try:
-            self.client = InferenceClient()
+            # Configurar logger
+            self.logger = LoggerConfig.get_logger('content_generator')
+            self.logger.info('Inicializando ContentGenerator')
+            
+            # Configurar cliente y servicios
+            self.client = InferenceClient(token=os.getenv('HUGGINGFACE_API_KEY'))
             self.content_analyzer = ContentAnalyzer()
             self.valid_platforms = ['Instagram', 'TikTok', 'Facebook']
-            self.cache_manager = CacheManager(expiration_minutes=120)
-            self.max_retries = 3
-            self.timeout = 10
-            self.model_name = "meta-llama/Llama-2-7b-chat-hf"
+            self.cache_manager = CacheManager(expiration_minutes=int(os.getenv('CACHE_EXPIRATION_MINUTES', 120)))
+            self.max_retries = int(os.getenv('MAX_RETRIES', 3))
+            self.timeout = int(os.getenv('REQUEST_TIMEOUT', 10))
+            self.model_name = os.getenv('MODEL_NAME', 'meta-llama/Llama-2-7b-chat-hf')
             self.generation_config = {
                 'max_new_tokens': 300,
                 'temperature': 0.8,

@@ -1,18 +1,41 @@
+import os
 import streamlit as st
+from dotenv import load_dotenv
 from modules.content_generator import ContentGenerator
 from modules.campaign_manager import CampaignManager
 from modules.competitor_analyzer import CompetitorAnalyzer
 from modules.influencer_finder import InfluencerFinder
 from modules.user_manager import UserManager
 from modules.dashboard_manager import DashboardManager
+from modules.logger_config import LoggerConfig
+from modules.trend_analyzer import TrendAnalyzer
+from modules.notification_manager import NotificationManager
+
+# Cargar variables de entorno
+load_dotenv()
+
+# Configurar logger
+logger = LoggerConfig().get_logger('main')
+logger.info('Iniciando aplicación')
+
+# Configurar modo de depuración
+debug_mode = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # Inicialización de módulos
-content_gen = ContentGenerator()
-campaign_mgr = CampaignManager()
-competitor_analyzer = CompetitorAnalyzer()
-influencer_finder = InfluencerFinder()
-user_manager = UserManager()
-dashboard_manager = DashboardManager()
+try:
+    content_gen = ContentGenerator()
+    campaign_mgr = CampaignManager()
+    competitor_analyzer = CompetitorAnalyzer()
+    influencer_finder = InfluencerFinder()
+    user_manager = UserManager()
+    dashboard_manager = DashboardManager()
+    trend_analyzer = TrendAnalyzer()
+    notification_manager = NotificationManager()
+    logger.info('Módulos inicializados correctamente')
+except Exception as e:
+    logger.error(f'Error al inicializar módulos: {str(e)}')
+    st.error('Error al inicializar la aplicación. Por favor, contacte al administrador.')
+    st.stop()
 
 # Configuración de la página
 st.set_page_config(
@@ -79,7 +102,7 @@ if st.session_state.user_id:
         st.sidebar.title("Menú")
         option = st.sidebar.selectbox(
             "Selecciona una función",
-            ["Dashboard", "Generador de Contenido", "Análisis de Competencia", "Plantillas de Campañas", "Buscador de Influencers"]
+            ["Dashboard", "Generador de Contenido", "Análisis de Competencia", "Plantillas de Campañas", "Buscador de Influencers", "Análisis de Tendencias", "Centro de Notificaciones"]
         )
         
         # Botón de cerrar sesión
@@ -204,6 +227,53 @@ with main_container:
                                 st.write(f"Bio: {inf['bio']}")
                     else:
                         st.error(result['error'])
+
+        elif option == "Análisis de Tendencias":
+            st.header("📈 Análisis Predictivo de Tendencias")
+            if st.button("Analizar Tendencias"):
+                with st.spinner("Analizando tendencias..."):
+                    result = trend_analyzer.analyze_trends(tienda_url)
+                    if 'error' not in result:
+                        st.success("¡Análisis completado!")
+                        
+                        # Mostrar predicciones
+                        st.subheader("Predicciones para las próximas semanas")
+                        predictions = result['predictions']
+                        for fecha, valor in zip(predictions['fechas'], predictions['valores']):
+                            st.metric(fecha, f"{valor:.2f}%")
+                        
+                        # Mostrar tendencias identificadas
+                        st.subheader("Tendencias Identificadas")
+                        for trend in result['trends']:
+                            icon = "📈" if trend['direction'] == 'up' else "📉"
+                            st.write(f"{icon} {trend['metric'].title()}: {abs(trend['change']):.1f}% de {trend['direction'] == 'up' and 'aumento' or 'disminución'}")
+                        
+                        # Mostrar recomendaciones
+                        st.subheader("Recomendaciones")
+                        for rec in result['recommendations']:
+                            st.info(rec)
+                    else:
+                        st.error(result['error'])
+
+        elif option == "Centro de Notificaciones":
+            st.header("🔔 Centro de Notificaciones")
+            
+            # Verificar alertas
+            alerts = notification_manager.check_alerts(tienda_url)
+            
+            if alerts:
+                for alert in alerts:
+                    with st.expander(f"{alert['title']} - {alert['timestamp']}"):
+                        st.write(alert['message'])
+                        st.write(f"Prioridad: {alert['priority'].upper()}")
+                        
+                        # Mostrar acciones disponibles
+                        cols = st.columns(len(alert['actions']))
+                        for i, action in enumerate(alert['actions']):
+                            if cols[i].button(action['label'], key=f"{alert['timestamp']}_{action['name']}"):
+                                st.write(f"Redirigiendo a {action['url']}...")
+            else:
+                st.info("No hay notificaciones nuevas en este momento.")
 
 # Footer
 st.markdown("---")
